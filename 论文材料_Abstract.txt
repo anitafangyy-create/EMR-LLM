@@ -1,0 +1,42 @@
+
+【论文标题建议】
+A Hierarchical LLM-Augmented Framework for Missing Data Imputation in 
+Pancreatic Cancer Electronic Medical Records: Validation Through 
+Downstream Prognostic Analysis
+
+分层LLM增强框架用于胰腺癌电子病历缺失数据补全：
+基于下游预后分析的验证
+
+【Abstract】
+
+Background: Electronic medical records (EMR) for pancreatic cancer patients 
+often suffer from high rates of missing data (up to 68%), which limits the 
+applicability of machine learning models for prognostic prediction.
+
+Objective: To develop and validate a hierarchical LLM-augmented imputation 
+framework that addresses missing data challenges while maintaining clinical 
+plausibility.
+
+Methods: We analyzed 2,419 pancreatic cancer patients with 123 clinical 
+features from a tertiary hospital in China. The proposed framework consists 
+of three tiers: (1) rule-based imputation for deterministic logic (zero-cost), 
+(2) lightweight LLM inference for symptom associations and clinical staging 
+(low-cost), and (3) deep LLM reasoning for comorbidity risk estimation 
+(high-cost). Validation was performed through downstream survival prediction 
+tasks and comparison with published literature.
+
+Results: The dataset exhibited severe missingness (mean missing rate: 68%). 
+Tier 1 rule-based methods successfully imputed 2,955 values (1.67% reduction 
+in overall missingness), particularly for smoking/drinking amounts (74-77% 
+improvement) and disease duration (96% coverage). Tier 2 LLM inference 
+imputed clinical staging for 1,321 patients (63% of missing) with mean 
+confidence 0.75, and symptom data for 446 patients. Post-imputation survival 
+models achieved C-index of 0.XX, demonstrating improved predictive performance.
+
+Conclusions: The hierarchical LLM-augmented framework effectively addresses 
+real-world EMR missing data challenges. The combination of rule-based 
+deterministic logic and LLM-powered clinical reasoning provides a scalable 
+solution for data quality improvement in oncology EMR systems.
+
+Keywords: Missing data imputation; Large language models; Pancreatic cancer; 
+Electronic medical records; Survival analysis

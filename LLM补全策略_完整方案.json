@@ -1,0 +1,218 @@
+{
+  "metadata": {
+    "dataset": "Pancreatic Cancer EMR",
+    "total_features": 123,
+    "total_samples": 2419,
+    "avg_missing_rate": 68.0,
+    "created": "2026-03-22T17:56:54.622521"
+  },
+  "strategy": {
+    " Tier 1 - 规则补全 (零成本)": {
+      "description": "基于确定性规则的逻辑补全，无需LLM",
+      "features": {
+        "duration_parsing": {
+          "target_cols": [
+            "hepatitis_b_duration",
+            "alcoholic_liver_duration",
+            "diabetes_duration",
+            "smoking_duration",
+            "drinking_duration",
+            "pancreatic_cancer_duration"
+          ],
+          "text_cols": [
+            "hepatitis_b_duration_text",
+            "alcoholic_liver_duration_text",
+            "diabetes_duration_text",
+            "smoking_duration_text",
+            "drinking_duration_text",
+            "pancreatic_cancer_duration_text"
+          ],
+          "method": "Regex + 单位换算",
+          "logic": "\n                解析文本格式：\n                - \"360.0_years\" → 360.0 (年)\n                - \"60.0_years\" → 60.0 (年) \n                - \"4.0_months\" → 4.0/12 = 0.33 (年)\n                - \"2.0_months\" → 2.0/12 = 0.17 (年)\n                - 统一转换为：duration_months (月) 或 duration_years (年)\n                ",
+          "code_template": "\n                def parse_duration(text_value):\n                    if pd.isna(text_value) or text_value == '0.0_units':\n                        return np.nan\n                    match = re.match(r'(\\d+\\.?\\d*)_(years|months|days)', str(text_value))\n                    if match:\n                        value, unit = float(match.group(1)), match.group(2)\n                        if unit == 'years':\n                            return value * 12  # 转换为月\n                        elif unit == 'months':\n                            return value\n                        elif unit == 'days':\n                            return value / 30\n                    return np.nan\n                "
+        },
+        "conditional_zero": {
+          "target_cols": [
+            "daily_smoking_amount",
+            "smoking_duration",
+            "quit_smoking_date",
+            "daily_drinking_amount",
+            "drinking_duration",
+            "quit_drinking_date",
+            "daily_smoking_cigarettes",
+            "daily_alcohol_g"
+          ],
+          "condition_col": [
+            "is_smoker",
+            "is_drinker",
+            "has_quit_smoking",
+            "has_quit_drinking"
+          ],
+          "method": "条件规则推断",
+          "logic": "\n                确定性补全规则：\n                - is_smoker = 0 → daily_smoking_amount = 0, smoking_duration = 0\n                - has_quit_smoking = 0 → quit_smoking_date = NaT (未戒烟)\n                - is_drinker = 0 → daily_drinking_amount = 0, drinking_duration = 0\n                - has_quit_drinking = 0 → quit_drinking_date = NaT\n                "
+        },
+        "derived_calculation": {
+          "target_cols": [
+            "bmi",
+            "pancreatic_cancer_duration_months"
+          ],
+          "source_cols": {
+            "bmi": [
+              "weight_kg",
+              "height_cm"
+            ],
+            "pancreatic_cancer_duration_months": [
+              "diagnosis_date",
+              "admission_date"
+            ]
+          },
+          "method": "数学公式计算",
+          "logic": "\n                - BMI = weight_kg / (height_cm/100)^2\n                - duration_months = (admission_date - diagnosis_date).days / 30\n                "
+        },
+        "binary_from_text": {
+          "target_cols": [
+            "has_weight_change"
+          ],
+          "source_cols": [
+            "weight_change_description"
+          ],
+          "method": "文本关键词匹配",
+          "logic": "\n                - weight_change_description 包含 'Decreased', '下降', '减轻' → has_weight_change = 1\n                - weight_change_description = 'No_significant_change' → has_weight_change = 0\n                "
+        }
+      }
+    },
+    " Tier 2 - LLM轻量补全 (低成本)": {
+      "description": "基于单样本上下文的简单推断，单次LLM调用",
+      "features": {
+        "clinical_stage_inference": {
+          "target_cols": [
+            "clinical_stage",
+            "clinical_t_stage",
+            "clinical_n_stage",
+            "clinical_m_stage"
+          ],
+          "context_cols": [
+            "has_metastasis",
+            "metastasis_site",
+            "metastasis_to_*",
+            "surgery_method",
+            "pathological_stage",
+            "tb_before_treatment"
+          ],
+          "prompt_template": "\n                基于以下患者信息，推断临床分期 (TNM分期)：\n                \n                患者信息：\n                - 转移情况: {has_metastasis}, 转移部位: {metastasis_site}\n                - 手术方式: {surgery_method}\n                - 病理分期: {pathological_stage}\n                - 胆红素水平: {tb_before_treatment}\n                \n                请输出：\n                - clinical_stage: (如 Stage_I, Stage_II, Stage_III, Stage_IV)\n                - clinical_t_stage: (T1-T4, X)\n                - clinical_n_stage: (N0-N2, X)  \n                - clinical_m_stage: (M0-M1, X)\n                \n                仅输出JSON格式。\n                ",
+          "validation": "与病理分期对比一致性"
+        },
+        "symptom_completeness": {
+          "target_cols": [
+            "has_nausea",
+            "has_vomiting",
+            "has_diarrhea",
+            "has_back_pain",
+            "has_peptic_ulcer"
+          ],
+          "context_cols": [
+            "has_abdominal_pain",
+            "has_abdominal_distension",
+            "has_jaundice"
+          ],
+          "prompt_template": "\n                胰腺癌患者症状推断：\n                \n                已知症状: {known_symptoms}\n                \n                请根据胰腺癌典型临床表现，推断以下症状存在的可能性(0-1)：\n                - has_nausea (恶心)\n                - has_vomiting (呕吐)\n                - has_diarrhea (腹泻)\n                - has_back_pain (背痛)\n                - has_peptic_ulcer (消化性溃疡)\n                \n                考虑：黄疸患者常伴恶心；腹痛患者可能有背痛等。\n                输出JSON格式，包含概率值和置信度。\n                "
+        },
+        "family_history_details": {
+          "target_cols": [
+            "family_pancreatic_cancer_relation"
+          ],
+          "condition_col": "family_pancreatic_cancer",
+          "prompt_template": "\n                患者有胰腺癌家族史 (family_pancreatic_cancer=1)。\n                \n                请推断最可能的亲属关系（一级亲属/二级亲属）：\n                - 一级亲属：父母、兄弟姐妹、子女\n                - 二级亲属：祖父母、叔伯姑姨\n                \n                输出：'First_degree' 或 'Second_degree' 或 'Unknown'\n                "
+        }
+      }
+    },
+    " Tier 3 - LLM深度推理 (高成本)": {
+      "description": "需要医学知识推理和多源信息融合",
+      "features": {
+        "comorbidity_inference": {
+          "target_cols": [
+            "has_hp_infection",
+            "has_eb_virus",
+            "has_coronary_disease",
+            "has_hyperlipidemia"
+          ],
+          "context_cols": [
+            "age",
+            "gender",
+            "has_diabetes",
+            "has_hypertension",
+            "fasting_glucose",
+            "family_other_cancer",
+            "birthplace"
+          ],
+          "prompt_template": "\n                基于患者基础信息，推断未记录的合并症风险：\n                \n                患者档案：\n                - 人口学: {age}岁, {gender}, {birthplace}\n                - 已知疾病: 糖尿病{has_diabetes}, 高血压{has_hypertension}\n                - 实验室: 空腹血糖{fasting_glucose}\n                - 家族史: {family_other_cancer}\n                \n                请推断以下疾病的患病风险(0-1)及置信度：\n                - has_hp_infection (幽门螺杆菌感染，中国感染率约50%)\n                - has_eb_virus (EB病毒感染)\n                - has_coronary_disease (冠心病，与年龄、糖尿病相关)\n                - has_hyperlipidemia (高脂血症，与糖尿病、肥胖相关)\n                \n                结合流行病学数据和患者个体特征进行推理。\n                输出JSON格式。\n                ",
+          "rag_enhancement": true,
+          "rag_sources": [
+            "中国慢性病流行病学数据",
+            "胰腺癌风险因素研究"
+          ]
+        },
+        "cause_of_death_classification": {
+          "target_cols": [
+            "cause_of_death"
+          ],
+          "condition": "is_deceased = 1",
+          "context_cols": [
+            "has_recurrence",
+            "has_metastasis",
+            "metastasis_site",
+            "survival_days",
+            "surgery_method",
+            "stage_at_diagnosis"
+          ],
+          "prompt_template": "\n                胰腺癌患者死亡原因推断：\n                \n                患者结局信息：\n                - 生存时间: {survival_days}天\n                - 复发: {has_recurrence}, 转移: {has_metastasis}\n                - 转移部位: {metastasis_site}\n                - 治疗方式: {surgery_method}\n                - 诊断分期: {stage_at_diagnosis}\n                \n                请推断最可能的死亡原因：\n                - Pancreatic_cancer_related (胰腺癌直接相关)\n                - Treatment_complications (治疗并发症)\n                - Other_cancer (其他恶性肿瘤)\n                - Non_cancer_cause (非肿瘤原因)\n                \n                输出分类和置信度。\n                "
+        },
+        "treatment_intention_reconstruction": {
+          "target_cols": [
+            "surgery_method",
+            "surgery_name"
+          ],
+          "context_cols": [
+            "stage_at_diagnosis",
+            "has_metastasis",
+            "age",
+            "ecog_score",
+            "tb_before_treatment",
+            "diagnosis_date",
+            "surgery_date"
+          ],
+          "prompt_template": "\n                基于患者临床特征，推断最适合的手术策略：\n                \n                患者情况：\n                - 分期: {stage_at_diastole}, 转移: {has_metastasis}\n                - 年龄: {age}, ECOG评分: {ecog_score}\n                - 胆红素: {tb_before_treatment}\n                - 诊断日期: {diagnosis_date}, 手术日期: {surgery_date}\n                \n                请推断：\n                1. 手术意图：根治性切除 / 姑息性手术 / 减瘤手术\n                2. 具体术式：Whipple / 远端胰腺切除 / 全胰腺切除 / 胆肠吻合等\n                3. 是否联合门静脉切除等扩大清扫\n                \n                基于NCCN指南和患者具体情况推理。\n                输出详细手术方案建议。\n                "
+        }
+      }
+    },
+    " Tier 4 - 多智能体验证 (最高成本)": {
+      "description": "多LLM协作 + 一致性验证 + 人工审核",
+      "features": {
+        "critical_value_verification": {
+          "target_cols": [
+            "survival_days",
+            "is_deceased",
+            "has_recurrence"
+          ],
+          "method": "Multi-Agent Consensus",
+          "workflow": "\n                1. Agent 1 (时间线验证): 检查诊断-治疗-随访时间线合理性\n                2. Agent 2 (医学逻辑): 验证结局与临床特征的一致性\n                3. Agent 3 (数据校验): 检查数值范围合理性\n                4. 投票机制：3个Agent中至少2个一致才接受\n                5. 冲突案例标记为人工审核\n                "
+        }
+      }
+    }
+  },
+  "prompts": {
+    "clinical_stage_inference": {
+      "purpose": "推断临床分期",
+      "prompt": "\n你是一位资深的肿瘤学专家。请根据以下患者信息推断胰腺癌的临床分期(TNM分期)。\n\n患者信息：\n- 年龄: {age}岁\n- 是否有转移: {has_metastasis}\n- 转移部位: {metastasis_site}\n- 手术方式: {surgery_method}\n- 病理分期(如有): {pathological_stage}\n- 总胆红素: {tb_before_treatment} μmol/L\n- CA19-9水平(如有): 未提供\n\nTNM分期规则：\n- T1: 肿瘤局限在胰腺，≤2cm\n- T2: 肿瘤局限在胰腺，>2cm  \n- T3: 肿瘤侵犯十二指肠、胆管或胰周组织\n- T4: 肿瘤侵犯大血管或周围器官\n- N0: 无区域淋巴结转移\n- N1: 1-3个区域淋巴结转移\n- N2: ≥4个区域淋巴结转移\n- M0: 无远处转移\n- M1: 有远处转移\n\n请输出JSON格式：\n{{\n    \"clinical_stage\": \"Stage_I/II/III/IV/Unknown\",\n    \"clinical_t_stage\": \"T1/T2/T3/T4/X\",\n    \"clinical_n_stage\": \"N0/N1/N2/X\", \n    \"clinical_m_stage\": \"M0/M1/X\",\n    \"confidence\": 0.0-1.0,\n    \"reasoning\": \"简要推理过程\"\n}}\n"
+    },
+    "comorbidity_risk": {
+      "purpose": "推断合并症风险",
+      "prompt": "\n基于患者的流行病学背景和已知疾病，推断以下合并症的患病概率。\n\n患者信息：\n- 年龄: {age}岁，性别: {gender}\n- 地区: {birthplace}\n- 已知疾病: 糖尿病{has_diabetes}, 高血压{has_hypertension}\n- 血糖: {fasting_glucose} mmol/L\n- 家族史: {family_other_cancer}\n\n流行病学参考数据：\n- 中国幽门螺杆菌感染率: ~50%\n- EB病毒血清阳性率: >90%(成人)\n- 冠心病患病率(>60岁): 约10-15%\n- 高脂血症患病率(糖尿病患): >60%\n\n请输出JSON：\n{{\n    \"has_hp_infection\": {{\"probability\": 0.0-1.0, \"confidence\": 0.0-1.0}},\n    \"has_eb_virus\": {{\"probability\": 0.0-1.0, \"confidence\": 0.0-1.0}},\n    \"has_coronary_disease\": {{\"probability\": 0.0-1.0, \"confidence\": 0.0-1.0}},\n    \"has_hyperlipidemia\": {{\"probability\": 0.0-1.0, \"confidence\": 0.0-1.0}}\n}}\n"
+    },
+    "survival_outcome_verification": {
+      "purpose": "验证生存结局一致性",
+      "prompt": "\n验证以下患者生存结局的合理性：\n\n患者信息：\n- 生存天数: {survival_days}\n- 是否死亡: {is_deceased}\n- 是否复发: {has_recurrence}\n- 诊断分期: {stage_at_diagnosis}\n- 是否手术: {surgery_method}\n- 转移情况: {has_metastasis}, 部位: {metastasis_site}\n\n胰腺癌典型生存期：\n- I期(手术): 中位生存 20-30月\n- II期(手术): 中位生存 15-20月\n- III期: 中位生存 8-12月\n- IV期: 中位生存 3-6月\n\n请判断：\n1. 生存时间是否与分期一致？(consistent/inconsistent/uncertain)\n2. 如有明显异常，指出可能的解释\n3. 建议的修正(如有)\n\n输出JSON格式。\n"
+    }
+  },
+  "evaluation": "\n## 1. 补全覆盖率指标\n\n| 指标 | 公式 | 目标值 |\n|------|------|--------|\n| 特征级覆盖率 | 已补全特征数 / 可补全特征数 | >80% |\n| 样本级覆盖率 | 至少补全1项的样本数 / 总样本数 | >90% |\n| 总体缺失率下降 | (补全前缺失率 - 补全后缺失率) / 补全前缺失率 | >50% |\n\n## 2. 补全准确性指标（需金标准验证）\n\n| 指标 | 说明 | 计算方法 |\n|------|------|----------|\n| 分类特征准确率 | 离散值的正确率 | Accuracy / F1 |\n| 连续特征MAE | 连续值的平均绝对误差 | mean(\\|预测-真实\\|) |\n| 排名一致性 | 序关系的保持程度 | Kendall's Tau |\n| 分布相似度 | 补全后 vs 原始分布 | KS检验 / Wasserstein距离 |\n\n## 3. 下游任务验证指标\n\n| 任务 | 评估指标 | 验证方法 |\n|------|----------|----------|\n| 生存预测 | C-index | 补全前 vs 补全后模型性能 |\n| 转移风险 | AUC-ROC | 同上 |\n| 治疗方案推荐 | 临床专家一致性 | 专家评审 |\n\n## 4. 文献对照验证\n\n- 关键流行病学指标对比（如：性别比例、中位生存期）\n- 与已发表研究的一致性检验\n- 异常值识别和处理\n\n## 5. 成本效益分析\n\n- Token消耗统计\n- API调用成本\n- 补全每特征的平均成本\n- 与人工标注成本对比\n"
+}

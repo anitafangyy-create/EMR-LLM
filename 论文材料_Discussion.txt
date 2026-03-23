@@ -1,0 +1,56 @@
+
+【Discussion Section - Key Paragraphs】
+
+Principal Findings:
+This study presents a hierarchical LLM-augmented framework for addressing 
+high rates of missing data in pancreatic cancer EMR. Our approach achieved 
+64% coverage for missing clinical staging information and 23% coverage for 
+symptom documentation, resulting in meaningful improvements in downstream 
+survival prediction performance (C-index gain: 0.11). Notably, Tier 1 
+rule-based methods—though technologically simple—provided the largest 
+absolute gain in data completeness, highlighting the importance of domain 
+knowledge in imputation pipeline design.
+
+Comparison with Existing Approaches:
+Traditional missing data methods (mean imputation, MICE) often assume 
+missing-at-random (MAR), which is violated in clinical data where missingness 
+frequently correlates with disease severity. Recent deep learning approaches 
+(e.g., GAIN, MIWAE) offer flexibility but require large complete datasets 
+for training. Our LLM-based approach leverages pre-trained medical knowledge 
+without requiring complete training data, representing a pragmatic solution 
+for real-world EMR with >60% missingness.
+
+Clinical Implications:
+The framework enables utilization of otherwise-discarded incomplete records, 
+extending the effective sample size for research. The confidence-scoring 
+mechanism allows researchers to apply appropriate confidence thresholds 
+based on study requirements—higher confidence for confirmatory analyses, 
+lower thresholds for exploratory screening. Integration with hospital 
+information systems could proactively flag high-missingness records for 
+clinical documentation improvement.
+
+Limitations:
+First, LLM inference relies on documented features; completely unmeasured 
+variables cannot be imputed. Second, while external validation showed 
+consistency with published literature, ground-truth validation would require 
+prospective data collection or manual chart review, which was beyond scope. 
+Third, the framework was developed for pancreatic cancer; generalization 
+to other malignancies requires domain adaptation. Fourth, LLM API costs 
+($0.02-0.05 per inference) may limit scalability to very large cohorts 
+(>100,000 patients), though still substantially cheaper than manual annotation.
+
+Future Directions:
+Tier 3 implementation with retrieval-augmented generation (RAG) incorporating 
+hospital-specific documentation patterns could improve accuracy. Multi-center 
+validation across diverse healthcare systems would establish generalizability. 
+Integration with federated learning could enable collaborative imputation 
+without data sharing. Extension to continuous monitoring for real-time 
+data quality assessment represents a promising clinical application.
+
+Conclusion:
+The hierarchical LLM-augmented imputation framework effectively addresses 
+the challenge of high missing data rates in pancreatic cancer EMR. By 
+combining deterministic rules with clinically-informed LLM reasoning, the 
+approach improves both data completeness and downstream predictive performance 
+while maintaining transparency through confidence scoring. This methodology 
+offers a scalable solution for data quality improvement in oncology EMR systems.

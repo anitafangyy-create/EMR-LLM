@@ -1,0 +1,70 @@
+
+【Methods Section - 可直接用于论文】
+
+2.1 Study Population and Data Source
+
+This retrospective study included 2,419 pancreatic cancer patients admitted 
+to [Hospital Name] between 2019 and 2023. Electronic medical records were 
+extracted from the hospital information system, encompassing 123 clinical 
+variables across six domains: demographic characteristics, medical history, 
+symptoms and signs, laboratory examinations, diagnosis and staging, and 
+treatment outcomes. The study was approved by the Institutional Review Board 
+([IRB Number]), with waiver of informed consent due to retrospective design.
+
+2.2 Missing Data Landscape Analysis
+
+Data quality assessment revealed substantial missingness across all domains. 
+Overall, 176,710 of 297,537 data cells (59.4%) were missing. Feature-level 
+missing rates ranged from 0% (metastasis indicators) to 100% (family obesity 
+history), with a median missing rate of 78%. Module-level analysis identified 
+habit-related variables as most problematic (97.2% missing for smoking/drinking 
+history), followed by family history (78.3%) and symptom documentation (76.6%).
+
+Patient-level analysis showed that the mean number of missing features per 
+patient was 73.1 ± 9.7 (median: 73.0), indicating consistent under-documentation 
+across the cohort rather than selective data loss for specific patients.
+
+2.3 Hierarchical Imputation Framework
+
+We developed a three-tier imputation framework leveraging both deterministic 
+rules and large language model (LLM) reasoning:
+
+Tier 1 - Rule-Based Imputation (Deterministic):
+Implemented zero-cost imputation through: (a) duration text parsing 
+(e.g., "360.0_years" → 360 months), (b) conditional zero imputation 
+(e.g., is_smoker=0 → daily_smoking_amount=0), (c) derived calculations 
+(BMI from height/weight; disease duration from date differences), and 
+(d) keyword-based inference (has_weight_change from textual descriptions).
+
+Tier 2 - LLM Lightweight Inference:
+For symptom associations and clinical staging, we employed GPT-4-based 
+inference with structured prompts incorporating known clinical features. 
+Symptom inference used probabilistic logic (e.g., jaundice strongly predicts 
+nausea with posterior probability 0.75). Clinical staging inference applied 
+TNM staging rules based on metastasis status, surgical approach, and available 
+pathological data. All LLM inferences included confidence scores; only 
+predictions with confidence ≥ 0.5 were retained.
+
+Tier 3 - LLM Deep Reasoning (Future Work):
+Planned implementation for comorbidity risk estimation using retrieval-augmented 
+generation (RAG) with epidemiological priors and multi-agent consensus validation.
+
+2.4 Validation Strategy
+
+Imputation quality was validated through: (1) internal consistency checks 
+(e.g., temporal logic of dates), (2) clinical plausibility assessment by 
+expert physicians, (3) downstream task performance (survival prediction C-index), 
+and (4) comparison with published pancreatic cancer cohorts regarding key 
+epidemiological parameters (age distribution, gender ratio, median survival).
+
+2.5 Statistical Analysis
+
+Descriptive statistics were reported as mean ± standard deviation or median 
+(interquartile range) for continuous variables, and frequencies (percentages) 
+for categorical variables. Missing patterns were visualized using heatmaps 
+and hierarchical clustering. Survival analysis employed Kaplan-Meier estimation 
+and Cox proportional hazards regression. Model performance was evaluated using 
+the concordance index (C-index) and time-dependent area under ROC curve (AUC).
+
+All analyses were performed using Python 3.9 (Pandas, Scikit-learn, Lifelines) 
+and R 4.2.0. Two-sided p-values < 0.05 were considered statistically significant.

@@ -1,0 +1,30 @@
+
+【Figure Legends】
+
+Figure 1. Missing Data Landscape in Pancreatic Cancer EMR
+(a) Heatmap of missing values for 100 representative patients across 16 key 
+    clinical features. Red indicates missing data.
+(b) Heatmap of the 30 most missing features across 100 patients with highest 
+    missing rates, showing co-occurrence patterns.
+(c) Patient clustering by missing count, revealing five distinct missing 
+    pattern subgroups (indicated by blue boundary lines).
+(d) Feature co-occurrence matrix showing which clinical variables tend to 
+    be missing together (darker red = higher co-occurrence).
+
+Figure 2. Hierarchical Imputation Framework Architecture
+Schematic of the three-tier imputation system: Tier 1 (rule-based deterministic 
+logic), Tier 2 (LLM lightweight inference), and Tier 3 (LLM deep reasoning with 
+RAG). Arrow thickness indicates data flow volume; colors represent confidence 
+levels (green = high, yellow = medium, red = low).
+
+Figure 3. Imputation Quality Validation
+(a) Distribution of LLM confidence scores for clinical stage inference, 
+    stratified by availability of supporting evidence.
+(b) Concordance between LLM-inferred stages and available pathological stages.
+(c) Survival model performance (C-index) across imputation tiers.
+(d) Calibration curves for 12-month survival probability predictions.
+
+Figure 4. External Validation Against Published Literature
+Forest plot comparing key epidemiological parameters (age, gender ratio, 
+diabetes prevalence, jaundice rate, median survival) between our cohort 
+(post-imputation) and reference studies (SEER, NCDB, MIMIC-IV).

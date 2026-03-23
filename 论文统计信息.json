@@ -1,0 +1,9 @@
+{
+  "total_patients": 2419,
+  "total_features": 136,
+  "mean_age": 63.32336608287057,
+  "male_percentage": 57.58577924762298,
+  "mean_missing_rate": 47.91327237798799,
+  "median_missing_rate": 42.06283588259612,
+  "imputed_features": 7
+}
