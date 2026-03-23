@@ -37,30 +37,29 @@
 
 ```
 .
-├── data/
-│   ├── raw/                    # Original EMR data (de-identified)
-│   ├── processed/              # Processed datasets
-│   └── imputed/                # Tier 1 & Tier 2 imputed data
-├── code/
-│   ├── data_loader.py          # Data loading and preprocessing
+├── src/                        # Source code
 │   ├── missing_analysis.py     # Missing pattern analysis
 │   ├── tier1_imputation.py     # Rule-based imputation
 │   ├── tier2_llm_imputation.py # LLM-based imputation
-│   ├── survival_analysis.py    # Cox regression and validation
-│   └── generate_figures.py     # Figure generation scripts
-├── figures/
-│   ├── Figure1_框架架构图.png
-│   ├── Figure2_缺失模式热力图.png
-│   ├── Figure3_LLM置信度分布.png
-│   └── Figure4_外部验证森林图.png
-├── paper/
-│   ├── 完整投稿论文_AIM.html    # Word-compatible manuscript
-│   ├── manuscript.tex          # LaTeX source
-│   └── AIM_投稿指南.md         # Submission guidelines
-├── skill/
-│   └── medical-data-research/  # Custom OpenClaw skill
-├── README.md
-└── LICENSE
+│   ├── data_validation.py      # Data validation
+│   ├── generate_all_figures.py # Figure generation
+│   ├── generate_figure4.py     # External validation figure
+│   ├── llm_imputation_strategy.py  # LLM strategy definition
+│   └── create_medical_skill.py # OpenClaw skill creator
+├── data/                       # Data files
+│   └── *.json                  # Configuration and metadata
+├── figures/                    # Generated figures
+│   ├── Figure1_框架架构图.{png,pdf}
+│   ├── Figure2_缺失模式热力图.{png,pdf}
+│   ├── Figure3_LLM置信度分布.{png,pdf}
+│   ├── Figure4_外部验证森林图.{png,pdf}
+│   └── 缺失*.{png,pdf}         # Additional analysis figures
+├── docs/                       # Documentation and papers
+│   └── 完整论文_胰腺癌EMR数据LLM补全研究.md  # Full manuscript
+├── results/                    # Analysis results (output directory)
+├── .github/workflows/          # CI/CD workflows
+├── README.md                   # This file
+└── requirements.txt            # Python dependencies
 ```
 
 ## 🚀 Quick Start
@@ -80,24 +79,25 @@ pip install -r requirements.txt
 
 ```python
 # Load and preprocess data
-from code.data_loader import load_medical_data
-df = load_medical_data('data/raw/pancreatic_cancer.csv')
-
-# Run missing analysis
-from code.missing_analysis import analyze_missing_comprehensive
+from src.missing_analysis import analyze_missing_comprehensive
+df = pd.read_csv('your_data.csv')
 results = analyze_missing_comprehensive(df)
 
 # Tier 1: Rule-based imputation
-from code.tier1_imputation import apply_rule_based_imputation
-df_tier1 = apply_rule_based_imputation(df)
+from src.tier1_imputation import apply_tier1_imputation
+df_tier1 = apply_tier1_imputation(df)
 
 # Tier 2: LLM imputation
-from code.tier2_llm_imputation import apply_llm_imputation
-df_tier2 = apply_llm_imputation(df_tier1)
+from src.tier2_llm_imputation import apply_tier2_imputation
+df_tier2 = apply_tier2_imputation(df_tier1)
 
-# Survival analysis
-from code.survival_analysis import evaluate_survival_models
-c_index, auc = evaluate_survival_models(df_tier2)
+# Data validation
+from src.data_validation import validate_data
+checks_passed, checks_failed = validate_data(df_tier2)
+
+# Generate figures
+from src.generate_all_figures import generate_all_figures
+generate_all_figures(df_tier2, output_dir='figures/')
 ```
 
 ## 📖 Citation
